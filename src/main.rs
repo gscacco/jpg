@@ -8,6 +8,15 @@ use std::mem::{size_of, zeroed};
 fn bigendian16(arr: [u8; 2]) -> u16 {
     (arr[0] as u16 * 256 + arr[1] as u16).into()
 }
+fn _bigendian32(arr: [u8; 4]) -> u32 {
+    let iter = arr.iter();
+
+    let mut res: u32 = 0;
+    for (i, v) in iter.enumerate() {
+        res += *v as u32 * 256_u32.pow(i as u32);
+    }
+    res
+}
 
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
@@ -30,9 +39,15 @@ struct App0Marker {
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 struct App1Marker {
-    ssss: [u8; 4],
+    ssss: [u8; 2],
+    exif: [u8; 4],
+    zero: [u8; 2],
 }
-
+impl App1Marker {
+    fn get_size(&self) -> u16 {
+        bigendian16(self.ssss)
+    }
+}
 impl App0Marker {
     fn get_length(&self) -> u16 {
         bigendian16(self.length)
@@ -45,12 +60,6 @@ impl App0Marker {
     }
 }
 
-#[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
-struct Header {
-    soi: [u8; 2],
-    app0: App0Marker,
-}
 fn read_struct(mut f: &File, structure: *mut u8, size: usize) -> std::io::Result<()> {
     unsafe {
         let slice = std::slice::from_raw_parts_mut(structure, size);
@@ -80,7 +89,18 @@ fn read_file(fname: String) -> std::io::Result<()> {
                 println!("Density {} x {}", app0.get_xdensity(), app0.get_ydensity());
                 println!("Version {}.{:#02}", app0.version[0], app0.version[1]);
                 println!("Density units {}", app0.density_units);
-                println!("Length {}", app0.get_length() - 16);
+                let app0_rst = app0.get_length() - 16;
+                println!("Length {}", app0_rst);
+                if app0_rst > 0 {
+                    f.seek(std::io::SeekFrom::Current(app0_rst.into()))?;
+                }
+            }
+            (0xFF, 0xE1) => {
+                println!("EXIF");
+                let mut app1: App1Marker = unsafe { zeroed() };
+                read_struct(&f, &mut app1 as *mut _ as *mut u8, size_of::<App1Marker>())?;
+                println!("Size {}", app1.get_size());
+                println!("Identifier {}", std::str::from_utf8(&app1.exif).unwrap());
             }
             _ => {
                 println!("Unknown block {:?}", h.header);
@@ -89,19 +109,6 @@ fn read_file(fname: String) -> std::io::Result<()> {
         }
     }
 
-    /* let mut header: Header = unsafe { std::mem::zeroed() };
-
-    read_struct(&f, &mut header as *mut _ as *mut u8, size_of::<Header>())?;
-
-    println!("Read structure: {:#?}", header);
-    println!("App0 length {}", header.app0.get_length());
-    println!("App0 xdensity {}", header.app0.get_xdensity());
-    println!("App0 ydensity {}", header.app0.get_ydensity());
-    let app0_rst = header.app0.get_length() - 16;
-    if app0_rst > 0 {
-        f.seek(std::io::SeekFrom::Current(app0_rst.into()))?;
-    }
-    println!("{}", app0_rst); */
     Ok(())
 }
 fn main() -> std::io::Result<()> {
