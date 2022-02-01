@@ -1,6 +1,10 @@
 use std::fs::File;
 use std::io::Read;
 
+fn bigendian16(arr: [u8; 2]) -> u16 {
+    (arr[0] as u16 * 256 + arr[1] as u16).into()
+}
+
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 struct App0Marker {
@@ -16,7 +20,13 @@ struct App0Marker {
 }
 impl App0Marker {
     fn get_length(&self) -> u16 {
-        (self.length[0] as u16 * 256 + self.length[1] as u16).into()
+        bigendian16(self.length)
+    }
+    fn get_xdensity(&self) -> u16 {
+        bigendian16(self.xdensity)
+    }
+    fn get_ydensity(&self) -> u16 {
+        bigendian16(self.ydensity)
     }
 }
 
@@ -40,6 +50,8 @@ fn read_file(fname: String) -> std::io::Result<()> {
     }
     println!("Read structure: {:#?}", header);
     println!("App0 length {}", header.app0.get_length());
+    println!("App0 xdensity {}", header.app0.get_xdensity());
+    println!("App0 ydensity {}", header.app0.get_ydensity());
     Ok(())
 }
 fn main() -> std::io::Result<()> {
