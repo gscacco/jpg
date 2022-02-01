@@ -20,6 +20,11 @@ struct App0Marker {
     xthumbnail: u8,
     ythumbnail: u8,
 }
+
+struct App1Marker {
+    ssss: [u8; 4],
+}
+
 impl App0Marker {
     fn get_length(&self) -> u16 {
         bigendian16(self.length)
@@ -38,18 +43,21 @@ struct Header {
     soi: [u8; 2],
     app0: App0Marker,
 }
-
+fn read_struct(mut f: &File, structure: *mut u8, size: usize) -> std::io::Result<()> {
+    unsafe {
+        let slice = std::slice::from_raw_parts_mut(structure, size);
+        f.read_exact(slice).unwrap();
+    }
+    Ok(())
+}
 fn read_file(fname: String) -> std::io::Result<()> {
     let mut f = File::open(fname)?;
 
     let mut header: Header = unsafe { std::mem::zeroed() };
     let header_size = std::mem::size_of::<Header>();
-
-    unsafe {
-        let config_slice =
-            std::slice::from_raw_parts_mut(&mut header as *mut _ as *mut u8, header_size);
-        f.read_exact(config_slice).unwrap();
-    }
+    
+    read_struct(&f, &mut header as *mut _ as *mut u8, header_size)?;
+    
     println!("Read structure: {:#?}", header);
     println!("App0 length {}", header.app0.get_length());
     println!("App0 xdensity {}", header.app0.get_xdensity());
