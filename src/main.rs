@@ -78,6 +78,8 @@ fn read_file(fname: String) -> std::io::Result<()> {
                     std::str::from_utf8(&app0.identifier[0..4]).unwrap()
                 );
                 println!("Density {} x {}", app0.get_xdensity(), app0.get_ydensity());
+                println!("Version {}.{:#02}", app0.version[0], app0.version[1]);
+                println!("Density units {}", app0.density_units);
                 println!("Length {}", app0.get_length() - 16);
             }
             _ => {
