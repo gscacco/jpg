@@ -3,10 +3,6 @@ use std::io::{Read, Seek};
 use std::mem::{size_of, zeroed};
 mod data;
 
-//https://en.wikipedia.org/wiki/JPEG_File_Interchange_Format
-//Exif: https://www.media.mit.edu/pia/Research/deepview/exif.html
-//https://docs.fileformat.com/image/exif/
-
 fn read_struct(mut f: &File, structure: *mut u8, size: usize) -> std::io::Result<()> {
     unsafe {
         let slice = std::slice::from_raw_parts_mut(structure, size);
@@ -20,14 +16,22 @@ fn read_file(fname: String) -> std::io::Result<()> {
     let mut go = true;
     while go {
         let mut h: data::GenericHeader = unsafe { zeroed() };
-        read_struct(&f, &mut h as *mut _ as *mut u8, size_of::<data::GenericHeader>())?;
+        read_struct(
+            &f,
+            &mut h as *mut _ as *mut u8,
+            size_of::<data::GenericHeader>(),
+        )?;
 
         match (h.header[0], h.header[1]) {
             (0xFF, 0xD8) => println!("Start Of Image"),
             (0xFF, 0xE0) => {
                 println!("APP0");
                 let mut app0: data::App0Marker = unsafe { zeroed() };
-                read_struct(&f, &mut app0 as *mut _ as *mut u8, size_of::<data::App0Marker>())?;
+                read_struct(
+                    &f,
+                    &mut app0 as *mut _ as *mut u8,
+                    size_of::<data::App0Marker>(),
+                )?;
 
                 println!(
                     "Identifier {}",
@@ -45,7 +49,11 @@ fn read_file(fname: String) -> std::io::Result<()> {
             (0xFF, 0xE1) => {
                 println!("EXIF");
                 let mut app1: data::App1Marker = unsafe { zeroed() };
-                read_struct(&f, &mut app1 as *mut _ as *mut u8, size_of::<data::App1Marker>())?;
+                read_struct(
+                    &f,
+                    &mut app1 as *mut _ as *mut u8,
+                    size_of::<data::App1Marker>(),
+                )?;
                 println!("Size {}", app1.get_size());
                 println!("Identifier {}", std::str::from_utf8(&app1.exif).unwrap());
                 println!("tiff header {:?}", app1.tiff_header);
