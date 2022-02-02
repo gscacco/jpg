@@ -30,14 +30,34 @@ pub mod data {
         pub xthumbnail: u8,
         pub ythumbnail: u8,
     }
-
+    #[derive(Debug)]
+    pub enum ByteOrder {
+        Big,
+        Little,
+    }
+    #[repr(C, packed)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct TiffHeader {
+        pub byte_order: [u8; 2],
+        pub magic_number: [u8; 2],
+        pub offset: [u8; 4],
+    }
+    impl TiffHeader {
+        pub fn get_byte_order(&self) -> Result<ByteOrder, &str> {
+            match (self.byte_order[0], self.byte_order[1]) {
+                (0x49, 0x49) => Ok(ByteOrder::Little),
+                (0x4D, 0x4D) => Ok(ByteOrder::Big),
+                _ => Err("Wrong byte order"),
+            }
+        }
+    }
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct App1Marker {
         pub ssss: [u8; 2],
         pub exif: [u8; 4],
         pub zero: [u8; 2],
-        pub tiff_header: [u8; 8],
+        pub tiff_header: TiffHeader,
     }
     impl App1Marker {
         pub fn get_size(&self) -> u16 {
